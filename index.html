@@ -126,6 +126,7 @@
 
 </div>
 <script>
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 const HABITS=[
   {id:'zen', name:'放空', target:15, emoji:'🌫️'},
   {id:'read',name:'看書', target:30, emoji:'📖'},
