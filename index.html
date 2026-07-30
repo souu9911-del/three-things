@@ -1,0 +1,299 @@
+<!DOCTYPE html><html lang="zh-Hant"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>三件事</title>
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="三件事">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#30363d;
+    --txt:#e6edf3; --dim:#8b949e; --accent:#39d353;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Noto Sans TC","Segoe UI",sans-serif;
+    padding:max(16px,env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
+    touch-action:manipulation;
+  }
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:18px;margin:0 0 4px;font-weight:600}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  .label{font-size:12px;color:var(--dim);margin-bottom:10px;letter-spacing:.04em}
+
+  .habits{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .habit{background:#0d1117;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .habit.done{border-color:var(--accent);background:#0e2a17}
+  .hit{
+    width:100%;border:0;background:none;color:inherit;font:inherit;
+    padding:14px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer
+  }
+  .hit .emoji{font-size:24px;line-height:1}
+  .hit .name{font-size:14px;font-weight:600}
+  .hit .min{font-size:12px;color:var(--dim)}
+  .habit.done .min{color:var(--accent)}
+  .adj{display:none;gap:6px;padding:0 6px 8px;justify-content:center}
+  .habit.done .adj{display:flex}
+  .adj button{flex:1;background:#161b22;border:1px solid var(--line);color:var(--dim);
+    border-radius:8px;padding:5px 0;font-size:13px;cursor:pointer}
+
+  .moods{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .moods button{
+    background:#0d1117;border:1px solid var(--line);border-radius:10px;
+    padding:10px 0;font-size:22px;cursor:pointer;color:inherit
+  }
+  .moods button.on{border-color:#e3b341;background:#2b2211}
+
+  .hmwrap{overflow-x:auto;padding-bottom:4px}
+  .hmwrap::-webkit-scrollbar{height:6px}
+  .hmwrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .hm{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,11px);gap:3px;width:max-content}
+  .hm i{width:11px;height:11px;border-radius:2px;background:#161b22;cursor:pointer;display:block}
+  .hm i.f1{background:#0e4429}.hm i.f2{background:#006d32}
+  .hm i.f3{background:#26a641}.hm i.f4{background:#39d353}
+  .hm i.future{background:transparent;cursor:default}
+  .hm i.sel{outline:1.5px solid #e6edf3;outline-offset:1px}
+  .months{display:grid;grid-auto-flow:column;gap:3px;width:max-content;
+    font-size:10px;color:var(--dim);height:14px;margin-bottom:2px}
+  .months span{grid-row:1;white-space:nowrap}
+
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs button{background:#0d1117;border:1px solid var(--line);color:var(--dim);
+    border-radius:999px;padding:4px 12px;font-size:13px;cursor:pointer}
+  .tabs button.on{color:var(--txt);border-color:var(--dim)}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td{padding:6px 0;border-bottom:1px solid #21262d}
+  td:last-child{text-align:right;font-variant-numeric:tabular-nums}
+  .big{font-size:15px;font-weight:600}
+  .note{font-size:13px;color:var(--dim);margin-top:10px;line-height:1.6}
+  .banner{display:none;align-items:center;justify-content:space-between;gap:10px;
+    background:#1f2937;border:1px solid var(--line);border-radius:10px;padding:8px 12px;
+    font-size:13px;margin-bottom:14px}
+  .banner.on{display:flex}
+  .banner button{background:none;border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:4px 10px;font-size:13px;cursor:pointer}
+  .io{display:flex;gap:8px;flex-wrap:wrap}
+  .io button,.io label{background:#0d1117;border:1px solid var(--line);color:var(--dim);
+    border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}
+  .io input{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>三件事</h1>
+  <div class="sub" id="today"></div>
+
+  <div class="banner" id="banner">
+    <span id="bannerTxt"></span>
+    <button id="backToday">回到今天</button>
+  </div>
+
+  <div class="card">
+    <div class="label">今天做了什麼</div>
+    <div class="habits" id="habits"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">今天心情如何</div>
+    <div class="moods" id="moods"></div>
+  </div>
+
+  <div class="card">
+    <div class="tabs" id="tabs"></div>
+    <div class="hmwrap" id="hmwrap">
+      <div class="months" id="months"></div>
+      <div class="hm" id="hm"></div>
+    </div>
+    <div class="note" id="cellInfo"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">累積</div>
+    <table id="stats"></table>
+    <div class="note" id="corr"></div>
+  </div>
+
+  <div class="io">
+    <button id="exp">匯出備份</button>
+    <label>匯入<input type="file" id="imp" accept=".json,application/json"></label>
+  </div>
+
+</div>
+<script>
+const HABITS=[
+  {id:'zen', name:'放空', target:15, emoji:'🌫️'},
+  {id:'read',name:'看書', target:30, emoji:'📖'},
+  {id:'eng', name:'英文', target:20, emoji:'🔤'}
+];
+const FACES=['😖','😕','😐','🙂','😄'];
+const KEY='three-things-v1';
+
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const midnight=()=>{const d=new Date();d.setHours(0,0,0,0);return d;};
+const TODAY=ymd(midnight());
+
+let db=(()=>{ try{const o=JSON.parse(localStorage.getItem(KEY));if(o&&o.days)return o;}catch(e){} return {v:1,days:{}}; })();
+let sel=TODAY, view='all';
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const day=k=>db.days[k]||(db.days[k]={});
+
+function toggle(id){
+  const d=day(sel), h=HABITS.find(x=>x.id===id);
+  if(d[id]>0) delete d[id]; else d[id]=h.target;
+  save(); render();
+}
+function adjust(id,n,e){
+  e.stopPropagation();
+  const d=day(sel);
+  d[id]=Math.max(5,(d[id]||0)+n);
+  save(); render();
+}
+function setMood(n){
+  const d=day(sel);
+  d.mood = d.mood===n ? undefined : n;
+  if(d.mood===undefined) delete d.mood;
+  save(); render();
+}
+
+/* ---------- 日曆格 ---------- */
+let weeks=[];
+(function build(){
+  const end=midnight(); end.setDate(end.getDate()+(6-end.getDay()));
+  const start=new Date(end); start.setDate(start.getDate()-370);
+  for(let i=0;i<53;i++){
+    const w=[];
+    for(let j=0;j<7;j++){ const d=new Date(start); d.setDate(start.getDate()+i*7+j); w.push(d); }
+    weeks.push(w);
+  }
+})();
+
+function level(k){
+  const o=db.days[k]; if(!o) return 0;
+  if(view==='all') return HABITS.filter(h=>o[h.id]>0).length;      // 0–3
+  return o[view]>0 ? (o[view]>=HABITS.find(h=>h.id===view).target?4:2) : 0;
+}
+const shade=n=>n<=0?'':'f'+Math.min(4,view==='all'?[0,2,3,4][n]:n);
+
+/* ---------- 畫面 ---------- */
+function render(){
+  const d=day(sel);
+
+  document.getElementById('today').textContent =
+    new Date(sel+'T00:00:00').toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'long'});
+  const b=document.getElementById('banner');
+  b.classList.toggle('on', sel!==TODAY);
+  document.getElementById('bannerTxt').textContent='正在補記 '+sel;
+
+  document.getElementById('habits').innerHTML = HABITS.map(h=>{
+    const m=d[h.id]||0;
+    return `<div class="habit ${m>0?'done':''}">
+      <button class="hit" onclick="toggle('${h.id}')">
+        <span class="emoji">${m>0?'✅':h.emoji}</span>
+        <span class="name">${h.name}</span>
+        <span class="min">${m>0?m+' 分':h.target+' 分'}</span>
+      </button>
+      <div class="adj">
+        <button onclick="adjust('${h.id}',-5,event)">−5</button>
+        <button onclick="adjust('${h.id}',5,event)">+5</button>
+      </div></div>`;
+  }).join('');
+
+  document.getElementById('moods').innerHTML = FACES.map((f,i)=>
+    `<button class="${d.mood===i+1?'on':''}" onclick="setMood(${i+1})">${f}</button>`).join('');
+
+  document.getElementById('tabs').innerHTML =
+    [{id:'all',name:'全部'},...HABITS].map(t=>
+      `<button class="${view===t.id?'on':''}" onclick="view='${t.id}';render()">${t.name}</button>`).join('');
+
+  // 熱力圖
+  const hm=document.getElementById('hm'); hm.innerHTML='';
+  weeks.forEach(w=>w.forEach(dt=>{
+    const k=ymd(dt), future=k>TODAY;
+    const el=document.createElement('i');
+    el.className=[future?'future':shade(level(k)), k===sel?'sel':''].join(' ').trim();
+    if(!future){
+      const o=db.days[k]||{};
+      const parts=HABITS.filter(h=>o[h.id]>0).map(h=>h.name+o[h.id]);
+      el.title=k+(parts.length?' · '+parts.join(' / '):' · 無')+(o.mood?' · 心情'+o.mood:'');
+      el.onclick=()=>{sel=k;render();};
+    }
+    hm.appendChild(el);
+  }));
+  const mo=document.getElementById('months');
+  mo.style.gridTemplateColumns=`repeat(53,11px)`; mo.innerHTML='';
+  let last=-9,pm=-1;
+  weeks.forEach((w,i)=>{
+    const m=w[0].getMonth();
+    if(m!==pm && i-last>=3){ mo.innerHTML+=`<span style="grid-column:${i+1}/span 5">${m+1}月</span>`; last=i; }
+    pm=m;
+  });
+
+  // 選中日說明
+  const sd=db.days[sel]||{};
+  const done=HABITS.filter(h=>sd[h.id]>0);
+  document.getElementById('cellInfo').textContent =
+    done.length ? `${sel}：${done.map(h=>h.name+' '+sd[h.id]+' 分').join('、')}　共 ${done.reduce((a,h)=>a+sd[h.id],0)} 分鐘`
+                : `${sel}：沒有記錄（點上面的按鈕可以補記）`;
+
+  stats();
+  requestAnimationFrame(()=>{const w=document.getElementById('hmwrap');w.scrollLeft=w.scrollWidth;});
+}
+
+function stats(){
+  const mon=midnight(); mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  const week=[...Array(7)].map((_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return ymd(d);});
+
+  let rows='';
+  HABITS.forEach(h=>{
+    const days=Object.values(db.days).filter(o=>o[h.id]>0);
+    const mins=days.reduce((a,o)=>a+o[h.id],0);
+    const wk=week.filter(k=>db.days[k]&&db.days[k][h.id]>0).length;
+    rows+=`<tr><td class="big">${h.emoji} ${h.name}</td>
+      <td>本週 ${wk}/7　·　共 ${days.length} 天　·　${(mins/60).toFixed(1)} 小時</td></tr>`;
+  });
+  const total=Object.values(db.days).reduce((a,o)=>a+HABITS.reduce((s,h)=>s+(o[h.id]||0),0),0);
+  rows+=`<tr><td class="big">總計</td><td>${(total/60).toFixed(1)} 小時搶回來了</td></tr>`;
+  document.getElementById('stats').innerHTML=rows;
+
+  const lines=[];
+  HABITS.forEach(h=>{
+    const A=[],B=[];
+    Object.values(db.days).forEach(o=>{ if(o.mood) (o[h.id]>0?A:B).push(o.mood); });
+    if(A.length>=5&&B.length>=5){
+      const av=a=>a.reduce((x,y)=>x+y,0)/a.length;
+      lines.push(`有做「${h.name}」的日子平均心情 <b>${av(A).toFixed(2)}</b>（${A.length} 天），沒做的 ${av(B).toFixed(2)}（${B.length} 天）`);
+    }
+  });
+  document.getElementById('corr').innerHTML = lines.length
+    ? lines.join('<br>')
+    : '心情對照：每個習慣「有做」和「沒做」各累積 5 天以上才會顯示，繼續記。';
+}
+
+/* ---------- 雜項 ---------- */
+document.getElementById('backToday').onclick=()=>{sel=TODAY;render();};
+document.getElementById('exp').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
+  a.download='three-things-'+TODAY+'.json'; a.click();
+};
+document.getElementById('imp').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{
+      const o=JSON.parse(r.result);
+      if(!o.days) throw 0;
+      Object.assign(db.days,o.days); save(); render(); alert('匯入完成');
+    }catch(x){ alert('檔案格式不對'); } };
+  r.readAsText(f);
+};
+render();
+</script>
+
+
+</body></html>
