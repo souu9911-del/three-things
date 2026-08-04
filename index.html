@@ -25,7 +25,7 @@
   .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
   .label{font-size:12px;color:var(--dim);margin-bottom:10px;letter-spacing:.04em}
 
-  .habits{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .habits{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px}
   .habit{background:#0d1117;border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .habit.done{border-color:var(--accent);background:#0e2a17}
   .hit{
@@ -81,6 +81,13 @@
   .io button,.io label{background:#0d1117;border:1px solid var(--line);color:var(--dim);
     border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}
   .io input{display:none}
+
+  .ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px}
+  .ach .a{background:#0d1117;border:1px solid var(--line);border-radius:10px;padding:10px 4px;text-align:center;cursor:default}
+  .ach .a .e{font-size:22px;display:block}
+  .ach .a .n{font-size:11px;color:var(--dim);margin-top:2px}
+  .ach .a.locked{filter:grayscale(1);opacity:.35}
+  .ach .a.unlocked{border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -92,6 +99,10 @@
   <div class="banner" id="banner">
     <span id="bannerTxt"></span>
     <button id="backToday">回到今天</button>
+  </div>
+
+  <div class="banner ach-banner" id="achBanner">
+    <span id="achBannerTxt"></span>
   </div>
 
   <div class="card">
@@ -119,6 +130,11 @@
     <div class="note" id="corr"></div>
   </div>
 
+  <div class="card">
+    <div class="label">成就 <span id="achCount" style="float:right"></span></div>
+    <div class="ach" id="achGrid"></div>
+  </div>
+
   <div class="io">
     <button id="exp">匯出備份</button>
     <label>匯入<input type="file" id="imp" accept=".json,application/json"></label>
@@ -130,7 +146,9 @@
 const HABITS=[
   {id:'zen', name:'放空', target:15, emoji:'🌫️'},
   {id:'read',name:'看書', target:30, emoji:'📖'},
-  {id:'eng', name:'英文', target:20, emoji:'🔤'}
+  {id:'eng', name:'英文', target:20, emoji:'🔤'},
+  {id:'py',  name:'Python', target:20, emoji:'🐍'},
+  {id:'thm', name:'TryHackMe', target:20, emoji:'🛡️'}
 ];
 const FACES=['😖','😕','😐','🙂','😄'];
 const KEY='three-things-v1';
@@ -176,10 +194,10 @@ let weeks=[];
 
 function level(k){
   const o=db.days[k]; if(!o) return 0;
-  if(view==='all') return HABITS.filter(h=>o[h.id]>0).length;      // 0–3
+  if(view==='all') return HABITS.filter(h=>o[h.id]>0).length;      // 0–5
   return o[view]>0 ? (o[view]>=HABITS.find(h=>h.id===view).target?4:2) : 0;
 }
-const shade=n=>n<=0?'':'f'+Math.min(4,view==='all'?[0,2,3,4][n]:n);
+const shade=n=>n<=0?'':'f'+Math.min(4,view==='all'?[0,2,3,4,4,4][n]:n);
 
 /* ---------- 畫面 ---------- */
 function render(){
@@ -243,6 +261,7 @@ function render(){
                 : `${sel}：沒有記錄（點上面的按鈕可以補記）`;
 
   stats();
+  checkAchievements();
   requestAnimationFrame(()=>{const w=document.getElementById('hmwrap');w.scrollLeft=w.scrollWidth;});
 }
 
@@ -276,12 +295,153 @@ function stats(){
     : '心情對照：每個習慣「有做」和「沒做」各累積 5 天以上才會顯示，繼續記。';
 }
 
+/* ---------- 成就 ---------- */
+function hasRecord(k){
+  const o=db.days[k]; if(!o) return false;
+  return HABITS.some(h=>o[h.id]>0) || o.mood;
+}
+function longestStreakOf(pred){
+  const keys=Object.keys(db.days).filter(pred).sort();
+  if(!keys.length) return 0;
+  let longest=1, cur=1;
+  for(let i=1;i<keys.length;i++){
+    const [ay,am,ad]=keys[i-1].split('-').map(Number);
+    const [by,bm,bd]=keys[i].split('-').map(Number);
+    const diff=Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000);
+    if(diff===1) cur++;
+    else { if(cur>longest) longest=cur; cur=1; }
+  }
+  if(cur>longest) longest=cur;
+  return longest;
+}
+const longestStreak=()=>longestStreakOf(hasRecord);
+function currentStreak(){
+  let n=0, c=midnight();
+  if(!hasRecord(ymd(c))) c.setDate(c.getDate()-1);
+  while(hasRecord(ymd(c))){ n++; c.setDate(c.getDate()-1); }
+  return n;
+}
+function totalMins(){
+  return Object.values(db.days).reduce((a,o)=>a+HABITS.reduce((s,h)=>s+(o[h.id]||0),0),0);
+}
+function hasFullWeek(){
+  const dates=Object.keys(db.days); if(!dates.length) return false;
+  dates.sort();
+  const start=new Date(dates[0]+'T00:00:00');
+  const today=midnight();
+  let cur=new Date(start);
+  while(cur<=today){
+    let ok=true;
+    for(let i=0;i<7;i++){
+      const d=new Date(cur); d.setDate(d.getDate()+i);
+      const o=db.days[ymd(d)];
+      const cnt=o ? HABITS.filter(h=>o[h.id]>0).length : 0;
+      if(cnt<3){ ok=false; break; }
+    }
+    if(ok) return true;
+    cur.setDate(cur.getDate()+1);
+  }
+  return false;
+}
+const sunnyLongest=()=>longestStreakOf(k=>{
+  const o=db.days[k];
+  return o && o.mood && o.mood>=4;
+});
+
+const ACHIEVEMENTS=[
+  {id:'streak3',  emoji:'🌱', name:'起步',     desc:'連續3天有記錄',
+    check:()=>longestStreak()>=3},
+  {id:'streak7',  emoji:'🔥', name:'一週',     desc:'連續7天有記錄',
+    check:()=>longestStreak()>=7},
+  {id:'streak30', emoji:'💪', name:'堅持',     desc:'連續30天有記錄',
+    check:()=>longestStreak()>=30},
+  {id:'streak100',emoji:'🏆', name:'百日',     desc:'連續100天有記錄',
+    check:()=>longestStreak()>=100},
+  {id:'hours10',  emoji:'⏱️', name:'初心者',   desc:'累積10小時',
+    check:()=>totalMins()>=600},
+  {id:'hours50',  emoji:'📚', name:'投入',     desc:'累積50小時',
+    check:()=>totalMins()>=3000},
+  {id:'hours200', emoji:'🎓', name:'大師',     desc:'累積200小時',
+    check:()=>totalMins()>=12000},
+  {id:'fullDay',  emoji:'⭐', name:'全壘打',   desc:'單日完成全部5個習慣',
+    check:d=>Object.values(d.days).some(o=>HABITS.every(h=>o[h.id]>0))},
+  {id:'fullWeek', emoji:'📅', name:'完美週',   desc:'任一連續7天內每天至少完成3個習慣',
+    check:()=>hasFullWeek()},
+  {id:'sunnyWeek',emoji:'☀️', name:'陽光週',   desc:'連續7天心情 ≥ 4',
+    check:()=>sunnyLongest()>=7},
+  {id:'backup',   emoji:'💾', name:'有備無患', desc:'首次成功匯出備份',
+    check:d=>d.exportedEver===true},
+  {id:'habitFirst',emoji:'🎯', name:'踏出第一步', desc:'任一習慣首次有記錄',
+    check:d=>Object.values(d.days).some(o=>HABITS.some(h=>o[h.id]>0))}
+];
+
+let achQueue=[], achShowing=false;
+
+function initAchievements(){
+  db.unlocked=db.unlocked||[];
+  let changed=false;
+  ACHIEVEMENTS.forEach(a=>{
+    if(!db.unlocked.includes(a.id) && a.check(db)){
+      db.unlocked.push(a.id);
+      changed=true;
+    }
+  });
+  if(changed) save();
+}
+
+function checkAchievements(){
+  db.unlocked=db.unlocked||[];
+  const newly=[];
+  try{
+    ACHIEVEMENTS.forEach(a=>{
+      if(!db.unlocked.includes(a.id) && a.check(db)){
+        db.unlocked.push(a.id);
+        newly.push(a);
+      }
+    });
+    if(newly.length){
+      save();
+      newly.forEach(a=>achQueue.push(a));
+      if(!achShowing) showNextAch();
+    }
+  }catch(e){ console.error('checkAchievements:',e); }
+  renderAch();
+}
+
+function showNextAch(){
+  if(!achQueue.length){ achShowing=false; return; }
+  achShowing=true;
+  const more=achQueue.length>1 ? `（還有 ${achQueue.length-1} 個）` : '';
+  const a=achQueue.shift();
+  const el=document.getElementById('achBanner');
+  document.getElementById('achBannerTxt').textContent=`🏆 解鎖：${a.name}！${more}`;
+  el.classList.add('on');
+  setTimeout(()=>{
+    el.classList.remove('on');
+    setTimeout(showNextAch, 300);
+  }, 4000);
+}
+
+function renderAch(){
+  const unlocked=db.unlocked||[];
+  document.getElementById('achCount').textContent=`已解鎖 ${unlocked.length} / 12`;
+  document.getElementById('achGrid').innerHTML=ACHIEVEMENTS.map(a=>{
+    const on=unlocked.includes(a.id);
+    return `<div class="a ${on?'unlocked':'locked'}" title="${on?a.desc:'🔒 '+a.desc}">
+      <span class="e">${a.emoji}</span>
+      <span class="n">${a.name}</span></div>`;
+  }).join('');
+}
+
+initAchievements();
+
 /* ---------- 雜項 ---------- */
 document.getElementById('backToday').onclick=()=>{sel=TODAY;render();};
 document.getElementById('exp').onclick=()=>{
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
   a.download='three-things-'+TODAY+'.json'; a.click();
+  db.exportedEver=true; save(); checkAchievements();
 };
 document.getElementById('imp').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
